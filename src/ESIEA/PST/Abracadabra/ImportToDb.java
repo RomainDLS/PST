@@ -3,16 +3,16 @@ package ESIEA.PST.Abracadabra;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 public class ImportToDb {
+	Statement st = null;
+	
 	public ImportToDb() {
 		String url = "jdbc:mysql://localhost:3306/mydb";
 		String user = "root";
 		String passwd = "user";
 		Connection cn = null;
-		Statement st = null;
 		
 		try{
 			Class.forName("com.mysql.jdbc.Driver");
@@ -23,19 +23,16 @@ public class ImportToDb {
 		} catch (Exception e){
 			e.printStackTrace();
 		}
-		
-		SaveMusic(st, "titre","album","artiste","genre",2007,"commentaire");
-		AddSignature(st, "titre", "artiste", 299);
-		
-		try {
-			cn.close();
-			st.close();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
 	}
 	
-	public void SaveMusic(Statement st, String title, String album, String artist, String type, int year, String comment){
+	public void SaveMusic(String title, String album, String artist, String type, int year, String comment){
+		
+		title = title.replace("'", "\"");
+		album = album.replace("'", "\"");
+		artist = artist.replace("'", "\"");
+		type = type.replace("'", "\"");
+		comment = comment.replace("'", "\"");
+		
 
 		try{
 			String sql = "INSERT INTO music_database VALUES (NULL, '"+ title +"','"+ artist +"','"+ year +"','"+ album +"','" + type + "',' "+ comment + "');";
@@ -47,8 +44,23 @@ public class ImportToDb {
 		}
 	}
 	
-	public void AddSignature(Statement st, String title, String artist, int j){
-
+	public int GetIdMusic(String title, String artist) {
+		title = title.replace("'", "\"");
+		artist = artist.replace("'", "\"");
+		try{
+			ResultSet rs= st.executeQuery("Select * FROM music_database WHERE title = '"+title+"' AND artiste = '" + artist +"'");
+			rs.next();
+			System.out.println("Select * FROM music_database WHERE title = '"+title+"' AND artiste = '" + artist +"'");
+			return rs.getInt(1);
+		} catch (Exception e){
+			e.printStackTrace();
+			return -1;
+		}
+	}
+	
+	public void AddSignature(int id, int j){
+		String idmusic = "" + id;
+		
 		try{
 			String sql;
 			System.out.println("Adding values !\n");
@@ -60,14 +72,12 @@ public class ImportToDb {
 				System.out.println("Values :" + j + "\t already exist in the table : signature");
 			}
 
-				ResultSet rs= st.executeQuery("Select * FROM music_database WHERE title = '"+title+"' AND artiste = '" + artist +"'");
-				rs.next();
 			try{
-				sql = "INSERT INTO signature_match VALUES (" + j + "," + rs.getString("idmusic_database") + ")";
+				sql = "INSERT INTO signature_match VALUES (" + j + "," + idmusic + ")";
 				System.out.println(sql);
 				st.executeUpdate(sql);
 			} catch (Exception e){
-				System.out.println("Values :" + j + "\t already exist in the table : signature");
+				System.out.println("Values :" + j + "\t already exist in the table : signature_match");
 			}
 				
 			
