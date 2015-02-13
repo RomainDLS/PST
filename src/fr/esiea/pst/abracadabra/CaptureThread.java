@@ -1,4 +1,4 @@
-package ESIEA.PST.Abracadabra;
+package fr.esiea.pst.abracadabra;
 import java.io.File;
 import java.io.IOException;
 

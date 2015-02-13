@@ -1,4 +1,4 @@
-package ESIEA.PST.Abracadabra;
+package fr.esiea.pst.abracadabra;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
