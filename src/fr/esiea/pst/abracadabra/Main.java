@@ -1,4 +1,4 @@
-package ESIEA.PST.Abracadabra;
+package fr.esiea.pst.abracadabra;
 
 public class Main {
 
