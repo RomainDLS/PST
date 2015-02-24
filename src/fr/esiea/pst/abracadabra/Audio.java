@@ -1,33 +1,17 @@
 package fr.esiea.pst.abracadabra;
 
-import java.io.File;
-import java.io.IOException;
+import it.sauronsoftware.jave.AudioAttributes;
+import it.sauronsoftware.jave.Encoder;
+import it.sauronsoftware.jave.EncoderException;
+import it.sauronsoftware.jave.EncodingAttributes;
 
-import javax.sound.sampled.AudioFileFormat;
+import java.io.File;
+
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.SourceDataLine;
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import javax.sound.sampled.*;
-import it.sauronsoftware.jave.*;
 
 public class Audio{
-    AudioFormat audioFormat;
-    TargetDataLine targetDataLine;
-    AudioInputStream audioInputStream;
 
-    public Audio(){
-    	this.audioFormat = null;
-    	this.targetDataLine = null;
-    	this.audioInputStream = null;
-    }
-    
-    public AudioFormat WAVFormat(){
+    public static AudioFormat WAVFormat(){
         float sampleRate = 44100;
         int sampleSizeInBits = 8;
         boolean signed = true;
@@ -37,7 +21,7 @@ public class Audio{
         return new AudioFormat(sampleRate, sampleSizeInBits, channels, signed, bigEndian);
     }
     
-    public File convertMP3toWAV(File mp3File){
+    public static File convertMP3toWAV(File mp3File){
     	File wavFile = new File("Klingande.wav");
     	AudioAttributes audio = new AudioAttributes();
     	audio.setCodec("pcm_s16le");

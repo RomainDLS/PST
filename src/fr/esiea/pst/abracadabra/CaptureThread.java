@@ -3,48 +3,80 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
 
-public class CaptureThread extends Thread{
+public class CaptureThread extends Thread {
 	
-	private Audio audio;
 	private File audioFile;
+  private TargetDataLine targetDataLine;
+  private boolean recordintStarted;
+  private int written = -1;
 
-	public CaptureThread(Audio audio, File audioFile) {
-		this.audio = audio;
+	public CaptureThread(File audioFile) {
 		this.audioFile = audioFile;
 	}
 	
-  public void run(){
+  @Override
+  public void run() {
 	  
-	audio.audioFormat = audio.WAVFormat();	
-    System.out.println(audio.audioFormat);  
-	DataLine.Info dataLineInfo = new DataLine.Info(TargetDataLine.class, audio.audioFormat); 
-	AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
-   
-    try{
-      audio.targetDataLine = (TargetDataLine) AudioSystem.getLine(dataLineInfo);	
-      audio.targetDataLine.open(audio.audioFormat);
-      audio.targetDataLine.start();
-    }catch (Exception e){
+  	AudioFormat audioFormat = Audio.WAVFormat();	
+    System.out.println(audioFormat);  
+  	DataLine.Info dataLineInfo = new DataLine.Info(TargetDataLine.class, audioFormat); 
+  	AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
+  
+  	try {
+      targetDataLine = (TargetDataLine) AudioSystem.getLine(dataLineInfo);	
+      targetDataLine.open(audioFormat);
+      
+      targetDataLine.start();
+      recordintStarted = true;
+  	}
+  	catch(LineUnavailableException e) {
       e.printStackTrace();
-    }
-    
-    audio.audioInputStream = new AudioInputStream(audio.targetDataLine);
+      return; //can't go further
+  	}
     
     try {
-		AudioSystem.write(audio.audioInputStream,fileType,audioFile);
-	} catch (IOException e) {
-		e.printStackTrace();
-	}
+      AudioInputStream audioInputStream = new AudioInputStream(targetDataLine);
+      written = AudioSystem.write(audioInputStream, fileType, audioFile);
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+      closeDataLine();
+	  }
   }
   
   public void halt() {
-	  audio.targetDataLine.stop();
-	  audio.targetDataLine.close();
+    closeDataLine();
+    waitTillFileWritten();
   }
+
+  public boolean isRecordingCompleted() {
+    return !recordintStarted || written >= 0;
+  }
+
+  private void closeDataLine() {
+    if(targetDataLine != null) {
+  	  targetDataLine.stop();
+  	  targetDataLine.close();
+    }
+  }
+
+  private void waitTillFileWritten() {
+    try {
+      while(!isRecordingCompleted()) {
+        Thread.sleep(50);
+      }
+    }
+    catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
 }
