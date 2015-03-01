@@ -33,7 +33,7 @@ public class FftProcessor {
     try (BufferedWriter fw1 = new BufferedWriter(new FileWriter("data.txt"));
          BufferedWriter fw2 = new BufferedWriter(new FileWriter("fft.txt"))) {
       for (int i = 0; i < nbView; i++) {
-        int read = readSlidingWindow(audioInputStream, bytes);
+        int read = readWindow(audioInputStream, bytes);
 
         for (int j = 0, k=0; j < read; j++, k=k+2) {
             data[i][k] = bytes[j];
@@ -54,7 +54,7 @@ public class FftProcessor {
           }
           fw2.newLine();
         }
-        fw2.write("Freq for Max magnitude ("+ GetMaxMagn(Magnitudes, 1, data[i].length/4) +") : " + GetMaxFreq(Magnitudes, 1, data[i].length/4) + " Hz \n");
+        System.out.println("Freq for Max magnitude ("+ GetMaxMagn(Magnitudes, 1, data[i].length/4) +") : " + GetMaxFreq(Magnitudes, 1, data[i].length/4) + " Hz");
       }
     }
     //autoclose
