@@ -9,9 +9,9 @@ public class ImportToDb {
 	Statement st = null;
 	
 	public ImportToDb() {
-		String url = "jdbc:mysql://localhost:3306/mydb";
+		String url = "jdbc:mysql://sd-36718.dedibox.fr:3306/abracadabra";
 		String user = "root";
-		String passwd = "user";
+		String passwd = "user"; //Passwrd à aller chercher par mail
 		Connection cn = null;
 		
 		try{
