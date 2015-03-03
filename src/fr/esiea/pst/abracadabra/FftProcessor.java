@@ -25,15 +25,15 @@ public class FftProcessor {
 
     int nbView = (int) dataLength / bytes.length;
     System.out.println("nbView : " + nbView);
-
+    System.out.println("frequences Ranges \t 20-250 Hz\t\t250-2000 Hz\t\t2000-6000 Hz\t\t6000-22050");
     float data[][] = new float[nbView][bytes.length * 2];
-    float Magnitudes[] = new float[bytes.length/2];
+    double Magnitudes[] = new double[bytes.length/2];
     FloatFFT_1D fft = new FloatFFT_1D(bytes.length);
 
     try (BufferedWriter fw1 = new BufferedWriter(new FileWriter("data.txt"));
          BufferedWriter fw2 = new BufferedWriter(new FileWriter("fft.txt"))) {
       for (int i = 0; i < nbView; i++) {
-        int read = readWindow(audioInputStream, bytes);
+        int read = readSlidingWindow(audioInputStream, bytes);
 
         for (int j = 0, k=0; j < read; j++, k=k+2) {
             data[i][k] = bytes[j];
@@ -49,12 +49,17 @@ public class FftProcessor {
           j++;
           fw2.append(Float.toString(data[i][j]));
           if(k<Magnitudes.length){
-        	  Magnitudes[k] = (float) Math.sqrt(Math.pow(data[i][j-1],2)+Math.pow(data[i][j],2));
+        	  Magnitudes[k] = Math.sqrt(Math.pow(data[i][j-1],2)+Math.pow(data[i][j],2));
         	  fw2.write("\t\t" + k*44100/4096 + " Hz\t\t Magn :" + Magnitudes[k]);
           }
           fw2.newLine();
         }
-        System.out.println("Freq for Max magnitude ("+ GetMaxMagn(Magnitudes, 1, data[i].length/4) +") : " + GetMaxFreq(Magnitudes, 1, data[i].length/4) + " Hz");
+        System.out.print("Freq for Max magnitude : ");
+        System.out.print(GetMaxFreq(Magnitudes, 2, 24) + " Hz ("+ GetMaxMagn(Magnitudes, 2, 24) + ")   \t");
+        System.out.print(GetMaxFreq(Magnitudes, 25, 187) + " Hz ("+ GetMaxMagn(Magnitudes, 25, 187) + ")  \t");
+        System.out.print(GetMaxFreq(Magnitudes, 188, 558) + " Hz ("+ GetMaxMagn(Magnitudes, 188, 558) + ") \t");
+        System.out.print(GetMaxFreq(Magnitudes, 559, 2048) + " Hz ("+ GetMaxMagn(Magnitudes, 559, 2048) + ") \t");
+        System.out.print("\n");
       }
     }
     //autoclose
@@ -88,13 +93,13 @@ public class FftProcessor {
 	    }
 	  }
   
-  private int GetMaxFreq(float data[], int RangeLow, int RangeHigh){
+  private int GetMaxFreq(double[] magnitudes, int RangeLow, int RangeHigh){
 	  int Freq = 0;
 	  int Magnitude = 0;
 	  
 	  for(int i=RangeLow; i<RangeHigh; i++){
-		  if(data[i]>Magnitude){
-			Magnitude = (int) data[i];
+		  if(magnitudes[i]>Magnitude){
+			Magnitude = (int) magnitudes[i];
 		  	Freq = i*44100/4096;
 		  }
 	  }
@@ -102,12 +107,12 @@ public class FftProcessor {
 	  return Freq;
   }
   
-  private float GetMaxMagn(float data[], int RangeLow, int RangeHigh){
+  private float GetMaxMagn(double[] magnitudes, int RangeLow, int RangeHigh){
 	  int Magnitude = 0;
 	  
 	  for(int i=RangeLow; i<RangeHigh; i++){
-		  if(data[i]>Magnitude){
-			Magnitude = (int) data[i];
+		  if(magnitudes[i]>Magnitude){
+			Magnitude = (int) magnitudes[i];
 		  }
 	  }
 	  
