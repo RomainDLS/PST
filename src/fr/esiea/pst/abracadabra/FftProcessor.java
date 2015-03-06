@@ -44,10 +44,9 @@ public class FftProcessor {
         }
           
         fft.realForward(data[i]);
-    //    System.out.println(fft);
 
         for (int j = 0,k=0; j < data[i].length/2; k++, j++) {
-          fw2.append(Float.toString((float) data[i][j])).append("\t\t");
+          fw2.append(Float.toString((float) data[i][j])	).append("\t\t");
           j++;
           fw2.append(Float.toString((float) data[i][j]));
           if(k<Magnitudes.length){
@@ -56,16 +55,8 @@ public class FftProcessor {
           }
           fw2.newLine();
         }
-        int[] Frequences = new int[4];
-        Frequences[0] = GetMaxFreq(Magnitudes, 2, 24);
-        Frequences[1] = GetMaxFreq(Magnitudes, 25, 187);
-        Frequences[2] = GetMaxFreq(Magnitudes, 188, 558);
-        Frequences[3] = GetMaxFreq(Magnitudes, 559, 2048);
-        fw3.write(GetMaxFreq(Magnitudes, 2, 24) + "   \t");
-        fw3.write(GetMaxFreq(Magnitudes, 25, 187) + "  \t");
-        fw3.write(GetMaxFreq(Magnitudes, 188, 558) + "  \t");
-        fw3.write(GetMaxFreq(Magnitudes, 559, 2048) + "\t");
-        fw3.append("" + getHash(Frequences));
+        
+        fw3.write(getMaxFreq(Magnitudes, 2, 24) + "   \t" + getMaxFreq(Magnitudes, 25, 187) + "   \t" + getMaxFreq(Magnitudes, 188, 558) + " \t" + getMaxFreq(Magnitudes, 559, 2048));
         fw3.newLine();
       }
     }
@@ -99,35 +90,17 @@ public class FftProcessor {
 	      return readWindow(inputStream, bytes);
 	    }
 	  }
-  
-  private int GetMaxFreq(double[] magnitudes, int RangeLow, int RangeHigh){
-	  int Freq = 0;
-	  int Magnitude = 0;
+
+  private HighScore getMaxFreq(double[] magnitudes, int rangeLow, int rangeHigh){
+	  HighScore HS = new HighScore();
 	  
-	  for(int i=RangeLow; i<RangeHigh; i++){
-		  if(magnitudes[i]>Magnitude){
-			Magnitude = (int) magnitudes[i];
-		  	Freq = i*44100/4096;
+	  for(int i = rangeLow; i < rangeHigh; i++) {
+		  if(magnitudes[i] > HS.getMagn()) {
+			  HS.setMagn(magnitudes[i]);
+			  HS.setFreq(i*44100/4096);
 		  }
 	  }
 	  
-	  return Freq;
-  }
-  
-  private float GetMaxMagn(double[] magnitudes, int RangeLow, int RangeHigh){
-	  int Magnitude = 0;
-	  
-	  for(int i=RangeLow; i<RangeHigh; i++){
-		  if(magnitudes[i]>Magnitude){
-			Magnitude = (int) magnitudes[i];
-		  }
-	  }
-	  
-	  return Magnitude;
-  }
-  
-  
-  private int getHash(int[] Frequences){
-	  return (int)Frequences[0]/3 + (int)100*Frequences[1]/3 + (int)100000*Frequences[2]/3;
+	  return HS;
   }
 }
