@@ -11,7 +11,7 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
-import org.jtransforms.fft.FloatFFT_1D;
+import org.jtransforms.fft.DoubleFFT_1D;
 
 public class FftProcessor {
 
@@ -26,12 +26,14 @@ public class FftProcessor {
     int nbView = (int) dataLength / bytes.length;
     System.out.println("nbView : " + nbView);
     System.out.println("frequences Ranges \t 20-250 Hz\t\t250-2000 Hz\t\t2000-6000 Hz\t\t6000-22050");
-    float data[][] = new float[nbView][bytes.length * 2];
+    double data[][] = new double[nbView][bytes.length * 2];
     double Magnitudes[] = new double[bytes.length/2];
-    FloatFFT_1D fft = new FloatFFT_1D(bytes.length);
+    DoubleFFT_1D fft = new DoubleFFT_1D(bytes.length);
 
     try (BufferedWriter fw1 = new BufferedWriter(new FileWriter("data.txt"));
-         BufferedWriter fw2 = new BufferedWriter(new FileWriter("fft.txt"))) {
+         BufferedWriter fw2 = new BufferedWriter(new FileWriter("fft.txt"));
+    	 BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes.txt"))) {
+    	fw3.write("20-250 Hz\t\t250-2000 Hz\t\t2000-6000 Hz\t\t6000-22050\n");
       for (int i = 0; i < nbView; i++) {
         int read = readSlidingWindow(audioInputStream, bytes);
 
@@ -41,25 +43,30 @@ public class FftProcessor {
           fw1.newLine();
         }
           
-        fft.complexForward(data[i]);
+        fft.realForward(data[i]);
     //    System.out.println(fft);
 
         for (int j = 0,k=0; j < data[i].length/2; k++, j++) {
-          fw2.append(Float.toString(data[i][j])).append("\t\t");
+          fw2.append(Float.toString((float) data[i][j])).append("\t\t");
           j++;
-          fw2.append(Float.toString(data[i][j]));
+          fw2.append(Float.toString((float) data[i][j]));
           if(k<Magnitudes.length){
         	  Magnitudes[k] = Math.sqrt(Math.pow(data[i][j-1],2)+Math.pow(data[i][j],2));
         	  fw2.write("\t\t" + k*44100/4096 + " Hz\t\t Magn :" + Magnitudes[k]);
           }
           fw2.newLine();
         }
-        System.out.print("Freq for Max magnitude : ");
-        System.out.print(GetMaxFreq(Magnitudes, 2, 24) + " Hz ("+ GetMaxMagn(Magnitudes, 2, 24) + ")   \t");
-        System.out.print(GetMaxFreq(Magnitudes, 25, 187) + " Hz ("+ GetMaxMagn(Magnitudes, 25, 187) + ")  \t");
-        System.out.print(GetMaxFreq(Magnitudes, 188, 558) + " Hz ("+ GetMaxMagn(Magnitudes, 188, 558) + ") \t");
-        System.out.print(GetMaxFreq(Magnitudes, 559, 2048) + " Hz ("+ GetMaxMagn(Magnitudes, 559, 2048) + ") \t");
-        System.out.print("\n");
+        int[] Frequences = new int[4];
+        Frequences[0] = GetMaxFreq(Magnitudes, 2, 24);
+        Frequences[1] = GetMaxFreq(Magnitudes, 25, 187);
+        Frequences[2] = GetMaxFreq(Magnitudes, 188, 558);
+        Frequences[3] = GetMaxFreq(Magnitudes, 559, 2048);
+        fw3.write(GetMaxFreq(Magnitudes, 2, 24) + "   \t");
+        fw3.write(GetMaxFreq(Magnitudes, 25, 187) + "  \t");
+        fw3.write(GetMaxFreq(Magnitudes, 188, 558) + "  \t");
+        fw3.write(GetMaxFreq(Magnitudes, 559, 2048) + "\t");
+        fw3.append("" + getHash(Frequences));
+        fw3.newLine();
       }
     }
     //autoclose
@@ -117,5 +124,10 @@ public class FftProcessor {
 	  }
 	  
 	  return Magnitude;
+  }
+  
+  
+  private int getHash(int[] Frequences){
+	  return (int)Frequences[0]/3 + (int)100*Frequences[1]/3 + (int)100000*Frequences[2]/3;
   }
 }
