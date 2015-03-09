@@ -22,7 +22,7 @@ public class Audio{
     }
     
     public static File convertMP3toWAV(File mp3File){
-    	File wavFile = new File("Klingande.wav");
+    	File wavFile = new File(mp3File.getName()+".wav");
     	AudioAttributes audio = new AudioAttributes();
     	audio.setCodec("pcm_s16le");
     	EncodingAttributes attrs = new EncodingAttributes();

@@ -53,7 +53,7 @@ public class Window extends JFrame {
 
         ct.halt();
         try {
-          new FftProcessor().fft(audioFile);
+          new FftProcessor().fft(audioFile, new ImportToDb());
         }
         catch (Exception ex) {
           showError(ex);

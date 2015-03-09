@@ -21,7 +21,18 @@ public class HighScore {
 	}
 	@Override
 	public String toString() {
-		return "Freq :" + Freq + "Hz, Magn :" + Magn;
+		return ""+ Freq;
+	}
+	
+	static void removeNegligible(HighScore[] list){
+		double MagnMax = 0;
+		
+		for(HighScore hi: list){
+			if(hi.getMagn() > MagnMax)
+				MagnMax = hi.getMagn();
+			if(hi.getMagn() < MagnMax)
+				hi.setFreq(0);			
+		}
 	}
 
 }
