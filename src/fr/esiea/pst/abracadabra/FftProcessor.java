@@ -21,6 +21,16 @@ public class FftProcessor {
 
   private static final int WINDOW_SIZE = 4096;
 
+  private MessageDigest hash;
+
+  public FftProcessor() {
+	 try {
+		hash = MessageDigest.getInstance("SHA-1");
+	} catch (NoSuchAlgorithmException e) {
+		throw new RuntimeException(e);
+	}
+  }
+  
   public Hash fft(File audioFile) throws UnsupportedAudioFileException, IOException {
 	  Hash hashList = new Hash();
     try(AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile)) {
@@ -52,7 +62,6 @@ public class FftProcessor {
 	          double[] magnitudes = computeBlockMagnitudes(block);
 	          HighScore[] highScores = computeHiScores(magnitudes);
 	          HighScore.removeNegligible(highScores);
-	          MessageDigest hash = MessageDigest.getInstance("SHA-1");
 	          hash.reset();
 	          for (HighScore hi : highScores) {
 	        	fw3.write(hi.getFreq()+"("+hi.getMagn() + ")\t");
@@ -63,10 +72,7 @@ public class FftProcessor {
 	          hashList.setHash(i, fromByteArray(hash.digest()));	    	  
 	        }
 	        
-      } catch (NoSuchAlgorithmException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	}
+      }
     }
     //autoclose
     return hashList;
@@ -79,6 +85,8 @@ public class FftProcessor {
 	    }
   }
   
+  //can't compute an nto out of a 20byte sha-1
+  @Deprecated
   int fromByteArray(byte[] bytes) {
 	     return ByteBuffer.wrap(bytes).getInt();
 	}

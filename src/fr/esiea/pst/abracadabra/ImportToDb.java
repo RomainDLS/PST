@@ -2,6 +2,7 @@ package fr.esiea.pst.abracadabra;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 public class ImportToDb {
+	PreparedStatement insertHashesStatement;
 	Statement st = null;
 	Connection cn = null;
 	
@@ -25,6 +27,7 @@ public class ImportToDb {
 			System.out.println("Driver O.K.");
 			cn = DriverManager.getConnection(url, user, passwd);
 			st = cn.createStatement();
+			insertHashesStatement = cn.prepareStatement("INSERT INTO signature VALUES (?,?,?);");
 			System.out.println("Connection O.K.");
 		} catch (Exception e){
 			e.printStackTrace();
@@ -81,15 +84,22 @@ public class ImportToDb {
 	
 	public void AddSignatures(int id, Hash hash){
 
-		String sql = null;
+		//String sql = null;
 		
 		try{
 			long start = System.currentTimeMillis();
+			byte[] bytes = new byte[]{ 23,47, 0x6F};
+			
+			
 			for(Entry<Integer, Integer> h : hash.getHash().entrySet()){
-				sql = ("INSERT INTO signature VALUES (" + id + "," + h.getValue() + "," + h.getKey() + ");");
-				st.addBatch(sql);
+				insertHashesStatement.setInt(1, id);
+				insertHashesStatement.setInt(2, h.getValue()); //FIXME use setBytes to insert the sha1 hash directly
+				insertHashesStatement.setInt(3, h.getKey());
+				//sql = ("INSERT INTO signature VALUES (" + id + "," + h.getValue() + "," + h.getKey() + ");");
+				//st.addBatch(sql);
+				insertHashesStatement.addBatch();
 			}
-			st.executeBatch();
+			insertHashesStatement.executeBatch();
 			long end = System.currentTimeMillis();
 			System.out.println("Hashs Added ! Time : " + (end - start));
 		} catch (Exception e){

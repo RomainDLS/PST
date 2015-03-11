@@ -2,6 +2,7 @@ package fr.esiea.pst.abracadabra;
 
 import java.util.HashMap;
 
+//FIXME maybe ust use a list of a tuple object {int time, byte[] hash}
 public class Hash {
 	
 	HashMap<Integer, Integer> Hash;
