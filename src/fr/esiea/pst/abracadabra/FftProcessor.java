@@ -21,15 +21,15 @@ public class FftProcessor {
 
   private static final int WINDOW_SIZE = 4096;
 
-  public void fft(File audioFile, ImportToDb Import) throws UnsupportedAudioFileException, IOException {
-
+  public Hash fft(File audioFile) throws UnsupportedAudioFileException, IOException {
+	  Hash hashList = new Hash();
     try(AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile)) {
       AudioFormat audioFormat = audioInputStream.getFormat();
       int bytesPerFrame = audioFormat.getSampleSizeInBits() / 8;
       
       //half a second to skip due to some noise from the line opening on some PC's
       long toSkip = (long)(bytesPerFrame * audioFormat.getFrameRate()) / 2;
-      audioInputStream.skip(toSkip);
+      audioInputStream.skip(toSkip); 
       
       long dataLength = audioInputStream.getFrameLength() * audioFormat.getSampleSizeInBits() / 8 - toSkip;
       System.out.println("dataLength : "+dataLength);
@@ -38,85 +38,75 @@ public class FftProcessor {
       int nbView = (int) dataLength / WINDOW_SIZE; //FIXME recompute depending on window overlapping
   
       System.out.println("nbView : " + nbView);
-      System.out.println("frequences Ranges \t 20-250 Hz\t\t250-2000 Hz\t\t2000-6000 Hz\t\t6000-22050");
-      
-      double data[][] = new double[nbView][];
+
       DoubleFFT_1D fft = new DoubleFFT_1D(WINDOW_SIZE); //CAUTION, only works when frame size = 1 byte
-  
-      int id = Import.GetIdMusic("Every Day Struggle", "Notorious B.I.G");
-      
+        
       try (BufferedInputStream bis = new BufferedInputStream(audioInputStream);
-           BufferedWriter fw1 = new BufferedWriter(new FileWriter("data.txt"));
-           BufferedWriter fw2 = new BufferedWriter(new FileWriter("fft.txt"));
-           BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes"+audioFile.getName()+".txt"))) {
-    	  int hashBlock[] = new int[1];
-    	  int timeBlock[] = new int[1]; 
-        for (int i = 0; i < nbView; i++) {
-          int read = readSlidingWindow(bis, bytes, 0f); //TODO experiment with overlapping (maybe 50% or 30%)
-  
-          double[] block = convertToDoubles(fw1, bytes, read);
-          
-          data[i] = block; 
-          
-          fft.realForward(block);
-      //    System.out.println(fft);
-  
-          double[] magnitudes = computeBlockMagnitudes(fw2, block);
-          HighScore[] highScores = computeHiScores(fw3, magnitudes);
-          HighScore.removeNegligible(highScores);
-          MessageDigest hash = MessageDigest.getInstance("SHA-1");
-          hash.reset();
-          for (HighScore hi : highScores) {
-            hash.update(intToBytes(hi.getFreq()));
-          }
-          fw3.newLine();
-  		  
-          hashBlock[i%(hashBlock.length)] = fromByteArray(hash.digest());
-    	  timeBlock[i%(hashBlock.length)] = i;
-          
-      //    if(i%(hashBlock.length-1) == 0 && i != 0){
-        	  Import.AddSignature(id, hashBlock, timeBlock);   
-    //    	  System.out.println("Block Insertion..");
-     //     }
-        }
+    	BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes"+audioFile.getName()+".txt"))) {  	  
+	        for (int i = 0; i < nbView*2; i++) {
+	          int read = readSlidingWindow(bis, bytes, 0.5f); //TODO experiment with overlapping (maybe 50% or 30%)
+	          double[] block = convertToDoubles(bytes, read);
+	          hanning(block, 0, block.length);
+	          fft.realForward(block);
+	  
+	          double[] magnitudes = computeBlockMagnitudes(block);
+	          HighScore[] highScores = computeHiScores(magnitudes);
+	          HighScore.removeNegligible(highScores);
+	          MessageDigest hash = MessageDigest.getInstance("SHA-1");
+	          hash.reset();
+	          for (HighScore hi : highScores) {
+	        	fw3.write(hi.getFreq()+"("+hi.getMagn() + ")\t");
+	            hash.update(intToBytes(hi.getFreq()));
+	          }
+	          fw3.newLine();
+	  		  
+	          hashList.setHash(i, fromByteArray(hash.digest()));	    	  
+	        }
+	        
       } catch (NoSuchAlgorithmException e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
 	}
     }
     //autoclose
+    return hashList;
+  }
+  
+  public void hanning(double[] audioBuffer, int start, int len) {
+	    int N = len - 1;
+	    for (int i = start, n = 0; i < start + len; i++, n++) {
+	      audioBuffer[i] = audioBuffer[i] * 0.5 * (1.0 - Math.cos(2.0 * Math.PI * n / N));
+	    }
   }
   
   int fromByteArray(byte[] bytes) {
 	     return ByteBuffer.wrap(bytes).getInt();
 	}
+  
 
-  protected double[] convertToDoubles(BufferedWriter fw, byte[] bytes, int read) throws IOException {
+  protected double[] convertToDoubles(byte[] bytes, int read) throws IOException {
     double[] block = new double[bytes.length];
     for (int j = 0, k=0; j < read; j++, k++) {
       double value = bytes[j] & 0xFFL; //CAUTION, only works with frames made of unsigned bytes
       block[k] = value;
-      fw.write(Double.toString(value));
-      fw.newLine();
     }
     return block;
   }
 
-  protected double[] computeBlockMagnitudes(BufferedWriter fw, double[] block) throws IOException {
+
+  protected double[] computeBlockMagnitudes(double[] block) throws IOException {
     int magSize = block.length/2;
     double magnitudes[] = new double[magSize];
     for (int j = 0, k = 0; k < magSize; k++) {
       Complex c = new Complex(block[j++], block[j++]);
-      fw.append(c.toString());
   	  double abs = c.abs();
   	  magnitudes[k] = abs;
-  	  fw.write("\t\t" + k*44100/WINDOW_SIZE + " Hz\t\t Magn :" + abs);
-      fw.newLine();
     }
     return magnitudes;
   }
 
-  protected HighScore[] computeHiScores(BufferedWriter fw, double[] magnitudes) {
+
+  protected HighScore[] computeHiScores(double[] magnitudes) {
     HighScore[] highScores = new HighScore[4];
     highScores[0] = getMaxFreq(magnitudes, 2, 24);
     highScores[1] = getMaxFreq(magnitudes, 25, 187);
@@ -124,6 +114,7 @@ public class FftProcessor {
     highScores[3] = getMaxFreq(magnitudes, 559, 2048);
     return highScores;
   }
+
 
   private int readWindow(InputStream inputStream, byte[] bytes) throws IOException {
     int read = 0;
@@ -139,6 +130,7 @@ public class FftProcessor {
     return read;
   }
   
+
   private int readSlidingWindow(InputStream inputStream, byte[] bytes, float overflowRate) throws IOException {
 	    if(overflowRate != 0 && inputStream.markSupported()) {
 	      int skipValue = bytes.length - (int)(overflowRate * bytes.length);
@@ -153,6 +145,7 @@ public class FftProcessor {
 	    }
 	  }
 
+
   private HighScore getMaxFreq(double[] magnitudes, int rangeLow, int rangeHigh){
 	  HighScore HS = new HighScore();
 	  
@@ -166,6 +159,7 @@ public class FftProcessor {
 	  return HS;
   }
   
+
   private static final byte[] intToBytes(int value) {
 	    return new byte[] {
 	            (byte)(value >>> 24),
@@ -174,14 +168,21 @@ public class FftProcessor {
 	            (byte)value};
   }
   
+
   public static void main(String... args) throws UnsupportedAudioFileException, IOException {
-    //new FftProcessor().fft(new File("D:/java/workspace/ESIEA/PST/échantillon.wav"));
-	  
 	  ImportToDb Import = new ImportToDb();
-	  Import.SaveMusic("Every Day Struggle","Live After Death","Notorious B.I.G","Rap",0,"NULL");
+    //new FftProcessor().fft(new File("D:/java/workspace/ESIEA/PST/échantillon.wav"));
+//    Import.SaveMusic("Every Struggle","Life After Death","Notorious BIG","Rap",1970,"NULL");	  
+//	  ImportToDb Import = new ImportToDb();
+//	  Import.SaveMusic("Every Day Struggle","Live After Death","Notorious B.I.G","Rap",0,"NULL");
+//	  Import.SaveMusic("Achy Breaky Heart","Some Gave All","Billy Ray Cyrus","Rock",1970,"NULL");
 			  
-    new FftProcessor().fft(new File("C:/Users/Romain/PST-Abracadabra/01.mp3.wav"),Import);
-    
-    System.out.println("OVER !");
+/*    Hash hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/Achy Breaky Heart.mp3")));
+    Import.AddSignatures(Import.GetIdMusic("Achy Breaky Heart", "Billy Ray Cyrus"), hash);
+    hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/EveryDayStruggle.mp3")));
+    Import.AddSignatures(Import.GetIdMusic("Every Struggle", "Notorious BIG"), hash);
+*/    
+	  Hash hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/AchyBreakyHeart.mp3")));
+    System.out.println(Import.musicMatched(hash));
   }
 }

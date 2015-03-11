@@ -4,7 +4,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 public class ImportToDb {
 	Statement st = null;
@@ -60,51 +64,75 @@ public class ImportToDb {
 		}
 	}
 	
-	public void AddSignature(int id, int[] hash, int[] time){
+	public String getMusicById(int id){
+		if(id!=0)
+		try{
+			ResultSet rs= st.executeQuery("Select title,artiste FROM music_database WHERE idmusic_database = "+id);
+			rs.next();
+	//		System.out.println("Select * FROM music_database WHERE title = '"+title+"' AND artiste = '" + artist +"'");
+			return "title : " + rs.getString(1) + "\n artiste : " + rs.getString(2);
+		} catch (Exception e){
+			e.printStackTrace();
+			return null;
+		}
+		else
+			return "Recherche ineffective...";
+	}
+	
+	public void AddSignatures(int id, Hash hash){
+
+		String sql = null;
 		
 		try{
-			String sql = null;
-	//		System.out.println("Adding values !\n");
-			try{
-				for(int i=0;i<hash.length;i++){
-				sql = ("INSERT INTO signature VALUES (" + id + "," + hash[i] + "," + time[i] + ");\n");
-			//	System.out.println(sql);
+			long start = System.currentTimeMillis();
+			for(Entry<Integer, Integer> h : hash.getHash().entrySet()){
+				sql = ("INSERT INTO signature VALUES (" + id + "," + h.getValue() + "," + h.getKey() + ");");
 				st.addBatch(sql);
-				}
-				st.executeBatch();
-			} catch (Exception e){
-				System.out.println("Values :" + hash + "\t already exist in the table : signature");
 			}
+			st.executeBatch();
+			long end = System.currentTimeMillis();
+			System.out.println("Hashs Added ! Time : " + (end - start));
+		} catch (Exception e){
+			e.printStackTrace();
+		}
+	}
+	
+	public String musicMatched(Hash hash){
+		
+		ResultSet rs = null;
+		HashMap<Integer, Integer> idList = new HashMap<>(); //{music_id, match_count}
+				
+		String request = "SELECT distinct music from signature where hash = ";
+		
+		try{
+			for(Entry<Integer, Integer> h : hash.getHash().entrySet()){
+				rs= st.executeQuery(request + h.getValue());
+				while(rs.next()){
+					int musicId = (Integer)rs.getInt("music");
+					Integer count = idList.get(musicId);
+					if(count == null) {
+						count = 0;
+					}
+					idList.put(musicId, count+1);
+				}
+			}
+			
+			System.out.println(idList);
+		
+			int MaxValue = 0;
+			int id = 0;
+			for(Entry<Integer, Integer> list : idList.entrySet()){
+				if(list.getValue() > MaxValue){
+					MaxValue = list.getValue();
+					id = list.getKey();
+				}
+			}
+			
+			return getMusicById(id);
 			
 		} catch (Exception e){
 			e.printStackTrace();
+			return null;
 		}
-	}
-	
-	public int musicMatched(int hash[]){
-		
-		ResultSet rs = null;
-				
-		String request = "SELECT distinct time from signature where hash = ";
-		try{
-			//for(int h : hash){
-				rs= st.executeQuery(request + 1083837565);
-				while(!rs.isAfterLast()){
-					rs.next();
-					
-				}
-			//}
-				//		System.out.println("Select * FROM music_database WHERE title = '"+title+"' AND artiste = '" + artist +"'");
-			return rs.getRow();
-		} catch (Exception e){
-			e.printStackTrace();
-			return -1;
-		}
-	}
-	
-	public static void main(String[] args) {
-		ImportToDb Data = new ImportToDb();
-		int hash[] = new int [16];
-		System.out.println( "test ->" + Data.musicMatched(hash));
 	}
 }

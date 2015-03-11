@@ -1,27 +1,24 @@
 package fr.esiea.pst.abracadabra;
 
 public class HighScore {
-	private int Freq;
-	private double Magn;
-	
-	public HighScore(){
-	}
+	private int freq;
+	private double magn;
 	
 	public int getFreq() {
-		return Freq;
+		return freq;
 	}
 	public void setFreq(int freq) {
-		Freq = freq;
+		this.freq = freq;
 	}
 	public double getMagn() {
-		return Magn;
+		return magn;
 	}
 	public void setMagn(double magn) {
-		Magn = magn;
+		this.magn = magn;
 	}
 	@Override
 	public String toString() {
-		return ""+ Freq;
+		return ""+ freq;
 	}
 	
 	static void removeNegligible(HighScore[] list){
@@ -30,7 +27,7 @@ public class HighScore {
 		for(HighScore hi: list){
 			if(hi.getMagn() > MagnMax)
 				MagnMax = hi.getMagn();
-			if(hi.getMagn() < MagnMax)
+			if(hi.getMagn() < MagnMax/10)
 				hi.setFreq(0);			
 		}
 	}

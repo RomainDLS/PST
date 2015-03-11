@@ -12,6 +12,7 @@ import javax.swing.JOptionPane;
 
 @SuppressWarnings("synthetic-access")
 public class Window extends JFrame {
+	Hash hash;
   private static final String SAMPLE_FILE_NAME = "échantillon.wav";
 
   private static final long serialVersionUID = 1L;
@@ -53,7 +54,8 @@ public class Window extends JFrame {
 
         ct.halt();
         try {
-          new FftProcessor().fft(audioFile, new ImportToDb());
+          hash = new FftProcessor().fft(audioFile);
+          System.out.println(new ImportToDb().musicMatched(hash));
         }
         catch (Exception ex) {
           showError(ex);
