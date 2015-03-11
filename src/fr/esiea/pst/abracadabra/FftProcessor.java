@@ -172,7 +172,6 @@ public class FftProcessor {
     return read;
   }
   
-
   private int readSlidingWindow(InputStream inputStream, byte[] bytes, float overflowRate) throws IOException {
 	    if(overflowRate != 0 && inputStream.markSupported()) {
 	      int skipValue = bytes.length - (int)(overflowRate * bytes.length);
@@ -201,7 +200,6 @@ public class FftProcessor {
 	  return HS;
   }
   
-
   private static final byte[] intToBytes(int value) {
 	    return new byte[] {
 	            (byte)(value >>> 24),
