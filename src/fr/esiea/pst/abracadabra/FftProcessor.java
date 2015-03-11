@@ -36,7 +36,8 @@ public class FftProcessor {
   }
 
   public Complex[][] fft(File audioFile, long msToSkip, long msToKeep) throws UnsupportedAudioFileException, IOException {
-    try(AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(Audio.WAVFormat(), AudioSystem.getAudioInputStream(audioFile))) {
+    AudioFormat monoFormat = Audio.WAVFormat(); //44100/8/1
+    try(AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(monoFormat, AudioSystem.getAudioInputStream(audioFile))) {
       AudioFormat audioFormat = audioInputStream.getFormat();
 
       int bytesPerFrame = audioFormat.getSampleSizeInBits() / 8;
@@ -118,7 +119,7 @@ public class FftProcessor {
 	}
   
 
-  protected double[] convertToDoubles(byte[] bytes, int read) throws IOException {
+  protected double[] convertToDoubles(byte[] bytes, int read) {
     double[] block = new double[bytes.length];
     for (int j = 0, k=0; j < read; j++, k++) {
       double value = bytes[j] & 0xFFL; //CAUTION, only works with frames made of unsigned bytes
