@@ -20,7 +20,7 @@ public class ImportToDb {
 	//	String url = "jdbc:mysql://sd-36718.dedibox.fr:3306/abracadabra";
 		String url = "jdbc:mysql://localhost:3306/mydb";
 		String user = "root"; //abracadabra
-		String passwd = "user"; //Passwrd à aller chercher par mail
+		String passwd = ""; //NE PAS COMMITER LE PASSWORD. FOURNI PAR MAIL PAR LE SUIVEUR.
 				
 		try{
 			Class.forName("com.mysql.jdbc.Driver");
@@ -34,7 +34,7 @@ public class ImportToDb {
 		}
 	}
 	
-	public void SaveMusic(String title, String album, String artist, String type, int year, String comment){
+	public int SaveMusic(String title, String album, String artist, String type, int year, String comment){
 		
 		title = title.replace("'", "\"");
 		album = album.replace("'", "\"");
@@ -46,10 +46,13 @@ public class ImportToDb {
 		try{
 			String sql = "INSERT INTO music_database VALUES (NULL, '"+ title +"','"+ artist +"','"+ year +"','"+ album +"','" + type + "',' "+ comment + "');";
 		//	System.out.println(sql);
-			st.executeUpdate(sql);
+			st.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
+			ResultSet rs = st.getGeneratedKeys();
+			rs.next();
+			return rs.getInt(1);
 			
 		} catch (Exception e){
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 	

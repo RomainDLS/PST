@@ -30,51 +30,77 @@ public class FftProcessor {
 		throw new RuntimeException(e);
 	}
   }
-  
-  public Hash fft(File audioFile) throws UnsupportedAudioFileException, IOException {
-	  Hash hashList = new Hash();
-    try(AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile)) {
+
+  public Complex[][] fft(File audioFile) throws UnsupportedAudioFileException, IOException {
+    return fft(audioFile, 500, -1); //by default half a second to skip due to some noise from the line opening on some PC's
+  }
+
+  public Complex[][] fft(File audioFile, long msToSkip, long msToKeep) throws UnsupportedAudioFileException, IOException {
+    try(AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(Audio.WAVFormat(), AudioSystem.getAudioInputStream(audioFile))) {
       AudioFormat audioFormat = audioInputStream.getFormat();
+
       int bytesPerFrame = audioFormat.getSampleSizeInBits() / 8;
-      
-      //half a second to skip due to some noise from the line opening on some PC's
-      long toSkip = (long)(bytesPerFrame * audioFormat.getFrameRate()) / 2;
+      long oneSecondBytes = (long)(bytesPerFrame * audioFormat.getFrameRate());
+      long toSkip = oneSecondBytes * msToSkip / 1000L; 
       audioInputStream.skip(toSkip); 
       
-      long dataLength = audioInputStream.getFrameLength() * audioFormat.getSampleSizeInBits() / 8 - toSkip;
+      long dataLength;
+      if(msToKeep < 0) {
+        dataLength = audioInputStream.getFrameLength() * audioFormat.getSampleSizeInBits() / 8 - toSkip;
+      }
+      else {
+        long frames = (long)((msToKeep * audioFormat.getSampleRate()) / 1000);
+        dataLength = frames * audioFormat.getSampleSizeInBits() / 8;
+      }
       System.out.println("dataLength : "+dataLength);
 
       byte bytes[] = new byte[WINDOW_SIZE];
-      int nbView = (int) dataLength / WINDOW_SIZE; //FIXME recompute depending on window overlapping
+      float overlapFactor = 0.5f;
+      int nbView = (int)(((float) dataLength / WINDOW_SIZE) / overlapFactor); //FIXME recompute depending on window overlapping
+      Complex[][] fftSlices = new Complex[nbView][];
   
       System.out.println("nbView : " + nbView);
 
       DoubleFFT_1D fft = new DoubleFFT_1D(WINDOW_SIZE); //CAUTION, only works when frame size = 1 byte
         
-      try (BufferedInputStream bis = new BufferedInputStream(audioInputStream);
-    	BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes"+audioFile.getName()+".txt"))) {  	  
-	        for (int i = 0; i < nbView*2; i++) {
-	          int read = readSlidingWindow(bis, bytes, 0.5f); //TODO experiment with overlapping (maybe 50% or 30%)
+      try (BufferedInputStream bis = new BufferedInputStream(audioInputStream)) {  	  
+	        for (int i = 0; i < nbView; i++) {
+	          int read = readSlidingWindow(bis, bytes, overlapFactor); //TODO experiment with overlapping (maybe 50% or 30%)
 	          double[] block = convertToDoubles(bytes, read);
 	          hanning(block, 0, block.length);
 	          fft.realForward(block);
-	  
-	          double[] magnitudes = computeBlockMagnitudes(block);
-	          HighScore[] highScores = computeHiScores(magnitudes);
-	          HighScore.removeNegligible(highScores);
-	          hash.reset();
-	          for (HighScore hi : highScores) {
-	        	fw3.write(hi.getFreq()+"("+hi.getMagn() + ")\t");
-	            hash.update(intToBytes(hi.getFreq()));
-	          }
-	          fw3.newLine();
-	  		  
-	          hashList.setHash(i, fromByteArray(hash.digest()));	    	  
+	          fftSlices[i] = toComplex(block);
 	        }
-	        
+	        return fftSlices;
       }
     }
-    //autoclose
+  }
+
+  public Hash fftAndHash(File audioFile) throws IOException, UnsupportedAudioFileException {
+    Complex[][] fftSlices = fft(audioFile);
+    return hash(audioFile, fftSlices);
+  }
+
+  public Hash hash(File audioFile, Complex[][] fftSlices) throws IOException {
+    Hash hashList = new Hash();
+    
+    try(BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes"+audioFile.getName()+".txt"))) {
+      int windows = fftSlices.length;
+      for(int i = 0; i < windows; i++) {
+        Complex[] fftSlice = fftSlices[i];
+        double[] magnitudes = computeBlockMagnitudes(fftSlice);
+        HighScore[] highScores = computeHiScores(magnitudes);
+        HighScore.removeNegligible(highScores);
+        hash.reset();
+        for (HighScore hi : highScores) {
+        fw3.write(hi.getFreq()+"("+hi.getMagn() + ")\t");
+          hash.update(intToBytes(hi.getFreq()));
+        }
+        fw3.newLine();
+      
+        hashList.setHash(i, fromByteArray(hash.digest()));
+      }
+    }
     return hashList;
   }
   
@@ -101,14 +127,21 @@ public class FftProcessor {
     return block;
   }
 
+  
+  protected Complex[] toComplex(double[] fftBlock) {
+    int size = fftBlock.length/2;
+    Complex result[] = new Complex[size];
+    for (int j = 0, k = 0; k < size; k++) {
+      result[k] = new Complex(fftBlock[j++], fftBlock[j++]);
+    }
+    return result;
+  }
 
-  protected double[] computeBlockMagnitudes(double[] block) throws IOException {
-    int magSize = block.length/2;
-    double magnitudes[] = new double[magSize];
-    for (int j = 0, k = 0; k < magSize; k++) {
-      Complex c = new Complex(block[j++], block[j++]);
-  	  double abs = c.abs();
-  	  magnitudes[k] = abs;
+  protected double[] computeBlockMagnitudes(Complex[] fftSlice) {
+    int size = fftSlice.length;
+    double magnitudes[] = new double[size];
+    for (int i = 0; i < size; i++) {
+  	  magnitudes[i] = fftSlice[i].abs();
     }
     return magnitudes;
   }
@@ -178,6 +211,7 @@ public class FftProcessor {
   
 
   public static void main(String... args) throws UnsupportedAudioFileException, IOException {
+    long t0 = System.currentTimeMillis();
 	  ImportToDb Import = new ImportToDb();
     //new FftProcessor().fft(new File("D:/java/workspace/ESIEA/PST/échantillon.wav"));
 //    Import.SaveMusic("Every Struggle","Life After Death","Notorious BIG","Rap",1970,"NULL");	  
@@ -190,7 +224,23 @@ public class FftProcessor {
     hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/EveryDayStruggle.mp3")));
     Import.AddSignatures(Import.GetIdMusic("Every Struggle", "Notorious BIG"), hash);
 */    
-	  Hash hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/AchyBreakyHeart.mp3")));
-    System.out.println(Import.musicMatched(hash));
+	  
+	  File wavFile = Audio.convertMP3toWAV(new File("D:/Temp/06-ovnimoon_-_you_can_do_this-gem.mp3"));
+    long t1 = System.currentTimeMillis();
+    System.out.println("Conversion to wav:" + (t1-t0));
+    int id = Import.SaveMusic("You can do this","Holistic","Ovnimoon","Psy",2015,"");
+
+    FftProcessor fftProcessor = new FftProcessor();
+    Complex[][] fftSlices = fftProcessor.fft(wavFile);
+    long t2 = System.currentTimeMillis();
+    System.out.println("FFT: " + (t2-t1));
+
+    Hash hashes = fftProcessor.hash(wavFile, fftSlices);
+    long t3 = System.currentTimeMillis();
+    System.out.println("Hashing: " + (t3-t2));
+    Import.AddSignatures(id, hashes);
+    
+    long t4 = System.currentTimeMillis();
+    System.out.println("Add signatures:" + (t4-t3));
   }
 }
