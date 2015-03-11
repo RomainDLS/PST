@@ -56,7 +56,7 @@ public class FftProcessor {
       System.out.println("dataLength : "+dataLength);
 
       byte bytes[] = new byte[WINDOW_SIZE];
-      float overlapFactor = 0.5f; //experimenting wiht oerlapping: 50%
+      float overlapFactor = 0.5f; //experimenting wiht overlapping: 50%
       int nbView = (int)(((float) dataLength / WINDOW_SIZE) / overlapFactor); //recompute windows count depending on window overlapping
       Complex[][] fftSlices = new Complex[nbView][];
   
