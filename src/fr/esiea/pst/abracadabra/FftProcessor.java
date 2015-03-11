@@ -56,8 +56,8 @@ public class FftProcessor {
       System.out.println("dataLength : "+dataLength);
 
       byte bytes[] = new byte[WINDOW_SIZE];
-      float overlapFactor = 0.5f;
-      int nbView = (int)(((float) dataLength / WINDOW_SIZE) / overlapFactor); //FIXME recompute depending on window overlapping
+      float overlapFactor = 0.5f; //experimenting with overlapping: 50%
+      int nbView = (int)(((float) dataLength / WINDOW_SIZE) / overlapFactor); //recompute windows count depending on window overlapping
       Complex[][] fftSlices = new Complex[nbView][];
   
       System.out.println("nbView : " + nbView);
@@ -66,7 +66,7 @@ public class FftProcessor {
         
       try (BufferedInputStream bis = new BufferedInputStream(audioInputStream)) {  	  
 	        for (int i = 0; i < nbView; i++) {
-	          int read = readSlidingWindow(bis, bytes, overlapFactor); //TODO experiment with overlapping (maybe 50% or 30%)
+	          int read = readSlidingWindow(bis, bytes, overlapFactor);
 	          double[] block = convertToDoubles(bytes, read);
 	          hanning(block, 0, block.length);
 	          fft.realForward(block);
