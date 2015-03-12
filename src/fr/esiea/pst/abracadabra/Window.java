@@ -27,7 +27,7 @@ public class Window extends JFrame {
   }
 
   public Window() {
-    File audioFile = new File(SAMPLE_FILE_NAME);
+    final File audioFile = new File(SAMPLE_FILE_NAME);
     // File mp3File = new File("Klingande.mp3");
     // audio.convertMP3toWAV(mp3File);
 
@@ -54,7 +54,7 @@ public class Window extends JFrame {
 
         ct.halt();
         try {
-          hash = new FftProcessor().fft(audioFile);
+          hash = new FftProcessor().fftAndHash(audioFile);
           System.out.println(new ImportToDb().musicMatched(hash));
         }
         catch (Exception ex) {
