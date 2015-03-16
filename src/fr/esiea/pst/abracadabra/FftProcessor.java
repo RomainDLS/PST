@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Savepoint;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -46,6 +47,7 @@ public class FftProcessor {
       audioInputStream.skip(toSkip); 
       
       long dataLength;
+      System.out.println("msToKeep : "+ msToKeep + " - audioFormat : " + audioFormat + " - audioInputStream.getFrameLength() : " + audioInputStream.getFrameLength());
       if(msToKeep < 0) {
         dataLength = audioInputStream.getFrameLength() * audioFormat.getSampleSizeInBits() / 8 - toSkip;
       }
@@ -85,11 +87,12 @@ public class FftProcessor {
   public Hash hash(File audioFile, Complex[][] fftSlices) throws IOException {
     Hash hashList = new Hash();
     
-    try(BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes"+audioFile.getName()+".txt"))) {
+    try(BufferedWriter fw3 = new BufferedWriter(new FileWriter("Magnitudes"+audioFile.getName()+".txt"));
+    		BufferedWriter fw2 = new BufferedWriter(new FileWriter("Data"+audioFile.getName()+".txt"))) {
       int windows = fftSlices.length;
       for(int i = 0; i < windows; i++) {
         Complex[] fftSlice = fftSlices[i];
-        double[] magnitudes = computeBlockMagnitudes(fftSlice);
+        double[] magnitudes = computeBlockMagnitudes(fw2, fftSlice);
         HighScore[] highScores = computeHiScores(magnitudes);
         HighScore.removeNegligible(highScores);
         hash.reset();
@@ -134,14 +137,16 @@ public class FftProcessor {
     Complex result[] = new Complex[size];
     for (int j = 0, k = 0; k < size; k++) {
       result[k] = new Complex(fftBlock[j++], fftBlock[j++]);
+      
     }
     return result;
   }
 
-  protected double[] computeBlockMagnitudes(Complex[] fftSlice) {
+  protected double[] computeBlockMagnitudes(BufferedWriter fw, Complex[] fftSlice) throws IOException {
     int size = fftSlice.length;
     double magnitudes[] = new double[size];
     for (int i = 0; i < size; i++) {
+       // fw.append(fftSlice.toString());
   	  magnitudes[i] = fftSlice[i].abs();
     }
     return magnitudes;
@@ -208,38 +213,46 @@ public class FftProcessor {
 	            (byte)value};
   }
   
-
-  public static void main(String... args) throws UnsupportedAudioFileException, IOException {
-    long t0 = System.currentTimeMillis();
-	  ImportToDb Import = new ImportToDb();
-    //new FftProcessor().fft(new File("D:/java/workspace/ESIEA/PST/échantillon.wav"));
-//    Import.SaveMusic("Every Struggle","Life After Death","Notorious BIG","Rap",1970,"NULL");	  
-//	  ImportToDb Import = new ImportToDb();
-//	  Import.SaveMusic("Every Day Struggle","Live After Death","Notorious B.I.G","Rap",0,"NULL");
-//	  Import.SaveMusic("Achy Breaky Heart","Some Gave All","Billy Ray Cyrus","Rock",1970,"NULL");
-			  
-/*    Hash hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/Achy Breaky Heart.mp3")));
-    Import.AddSignatures(Import.GetIdMusic("Achy Breaky Heart", "Billy Ray Cyrus"), hash);
-    hash = new FftProcessor().fft(Audio.convertMP3toWAV(new File("C:/Users/Romain/PST-Abracadabra/EveryDayStruggle.mp3")));
-    Import.AddSignatures(Import.GetIdMusic("Every Struggle", "Notorious BIG"), hash);
-*/    
+  public static void importFile(String fileName, ImportToDb Import) throws UnsupportedAudioFileException, IOException{
+	  long t0 = System.currentTimeMillis();
+	  File file;
+	  String[] name = fileName.split("\\."); 
+	  long t1;
+	  if(name[name.length-1].equals("mp3")){
+		  file = Audio.convertMP3toWAV(new File(fileName));
+		  t1 = System.currentTimeMillis();
+		  System.out.println("Conversion to wav:" + (t1-t0) + " filename : " + file.getAbsolutePath());
+	  }
+	  else
+		  file = new File(fileName);
+	  t1 = System.currentTimeMillis();
+	  int id = Import.SaveMusic(name[0].split("/")[name[0].split("/").length-1], "", "", "", 2000, "");
+	  FftProcessor fftProcessor = new FftProcessor();
+	  Complex[][] fftSlices = fftProcessor.fft(file);
+	  long t2 = System.currentTimeMillis();
+	  System.out.println("FFT: " + (t2-t1));
+	  Hash hashes = fftProcessor.hash(file, fftSlices);
+	  long t3 = System.currentTimeMillis();
+	  System.out.println("Hashing: " + (t3-t2));
+	  Import.AddSignatures(id, hashes);
+	  long t4 = System.currentTimeMillis();
+	  System.out.println("Add signatures:" + (t4-t3));
 	  
-	  File wavFile = Audio.convertMP3toWAV(new File("D:/Temp/06-ovnimoon_-_you_can_do_this-gem.mp3"));
-    long t1 = System.currentTimeMillis();
-    System.out.println("Conversion to wav:" + (t1-t0));
-    int id = Import.SaveMusic("You can do this","Holistic","Ovnimoon","Psy",2015,"");
+  }
+  
+  public static void importMusicFromDirectory(String directoryName) throws UnsupportedAudioFileException, IOException{
+	  ImportToDb Import = new ImportToDb();
+	  String[] fileList = new File(directoryName).list();
+	  for(String fileName : fileList){
+		  System.out.println("Importing :" + directoryName + "/" + fileName);
+		  importFile(directoryName + "/" + fileName, Import);
+	  }
+	  
+  }
+  
 
-    FftProcessor fftProcessor = new FftProcessor();
-    Complex[][] fftSlices = fftProcessor.fft(wavFile);
-    long t2 = System.currentTimeMillis();
-    System.out.println("FFT: " + (t2-t1));
-
-    Hash hashes = fftProcessor.hash(wavFile, fftSlices);
-    long t3 = System.currentTimeMillis();
-    System.out.println("Hashing: " + (t3-t2));
-    Import.AddSignatures(id, hashes);
-    
-    long t4 = System.currentTimeMillis();
-    System.out.println("Add signatures:" + (t4-t3));
+  public static void main(String... args) throws UnsupportedAudioFileException, IOException {	  	  
+	  importFile("MusicsToImport/Achy Breaky Heart.mp3", new ImportToDb());
+//	  importMusicFromDirectory("C:/Users/Romain/PST-Abracadabra/MusicsToImport");
   }
 }

@@ -27,7 +27,7 @@ public class HighScore {
 		for(HighScore hi: list){
 			if(hi.getMagn() > MagnMax)
 				MagnMax = hi.getMagn();
-			if(hi.getMagn() < MagnMax/10)
+			if(hi.getMagn() < MagnMax/7)
 				hi.setFreq(0);			
 		}
 	}
