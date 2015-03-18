@@ -1,5 +1,7 @@
 package fr.esiea.pst.abracadabra;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -10,6 +12,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import javax.sound.sampled.UnsupportedAudioFileException;
 
 public class ImportToDb {
 	PreparedStatement insertHashesStatement;
@@ -76,7 +80,7 @@ public class ImportToDb {
 			ResultSet rs= st.executeQuery("Select title,artiste FROM music_database WHERE idmusic_database = "+id);
 			rs.next();
 	//		System.out.println("Select * FROM music_database WHERE title = '"+title+"' AND artiste = '" + artist +"'");
-			return "title : " + rs.getString(1) + "\n artiste : " + rs.getString(2);
+			return rs.getString(1) + "\n   " + rs.getString(2);
 		} catch (Exception e){
 			e.printStackTrace();
 			return null;
@@ -122,6 +126,7 @@ public class ImportToDb {
 				rs= st.executeQuery(request + h.getValue());
 				while(rs.next()){
 					int musicId = (Integer)rs.getInt("music");
+				//	int time = (Integer)rs.getInt("time");
 					Integer count = idList.get(musicId);
 					if(count == null) {
 						count = 0;
@@ -148,4 +153,34 @@ public class ImportToDb {
 			return null;
 		}
 	}
+	
+	public static String Recognize(String fileName) throws UnsupportedAudioFileException, IOException{
+		File file;
+		ImportToDb Import = new ImportToDb();
+		String[] name = fileName.split("\\."); 
+		long t0 = System.currentTimeMillis();
+		long t1;
+		if(name[name.length-1].equals("mp3")){
+		  file = Audio.convertMP3toWAV(new File(fileName));
+		  t1 = System.currentTimeMillis();
+		  System.out.println("Conversion to wav:" + (double)(t1-t0)/1000 + "s");
+		}
+		else
+		  file = new File(fileName);
+		t1 = System.currentTimeMillis();
+		FftProcessor fftProcessor = new FftProcessor();
+		Complex[][] fftSlices = fftProcessor.fft(file);
+		long t2 = System.currentTimeMillis();
+		System.out.println("FFT: " + (double)(t2-t1)/1000 + "s");
+		Hash hashes = fftProcessor.hash(file, fftSlices);
+		long t3 = System.currentTimeMillis();
+		System.out.println("Hashing: " + (double)(t3-t2)/1000 + "s");
+		String matched = Import.musicMatched(hashes);
+		System.out.println(matched);
+		long t4 = System.currentTimeMillis();
+		System.out.println("Time for identification : " + (double)(t4-t3) /1000 + "s");
+		
+		return matched;
+	}
+	
 }

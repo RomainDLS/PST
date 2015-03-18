@@ -47,7 +47,7 @@ public class FftProcessor {
       audioInputStream.skip(toSkip); 
       
       long dataLength;
-      System.out.println("msToKeep : "+ msToKeep + " - audioFormat : " + audioFormat + " - audioInputStream.getFrameLength() : " + audioInputStream.getFrameLength());
+   //   System.out.println("msToKeep : "+ msToKeep + " - audioFormat : " + audioFormat + " - audioInputStream.getFrameLength() : " + audioInputStream.getFrameLength());
       if(msToKeep < 0) {
         dataLength = audioInputStream.getFrameLength() * audioFormat.getSampleSizeInBits() / 8 - toSkip;
       }
@@ -221,7 +221,7 @@ public class FftProcessor {
 	  if(name[name.length-1].equals("mp3")){
 		  file = Audio.convertMP3toWAV(new File(fileName));
 		  t1 = System.currentTimeMillis();
-		  System.out.println("Conversion to wav:" + (t1-t0) + " filename : " + file.getAbsolutePath());
+		  System.out.println("Conversion to wav:" + (t1-t0)/1000 + "s");
 	  }
 	  else
 		  file = new File(fileName);
@@ -230,13 +230,13 @@ public class FftProcessor {
 	  FftProcessor fftProcessor = new FftProcessor();
 	  Complex[][] fftSlices = fftProcessor.fft(file);
 	  long t2 = System.currentTimeMillis();
-	  System.out.println("FFT: " + (t2-t1));
+	  System.out.println("FFT: " + (t2-t1)/1000 + "s");
 	  Hash hashes = fftProcessor.hash(file, fftSlices);
 	  long t3 = System.currentTimeMillis();
-	  System.out.println("Hashing: " + (t3-t2));
+	  System.out.println("Hashing: " + (t3-t2)/1000 + "s");
 	  Import.AddSignatures(id, hashes);
 	  long t4 = System.currentTimeMillis();
-	  System.out.println("Add signatures:" + (t4-t3));
+	  System.out.println("Add signatures:" + (t4-t3)/1000 + "s");
 	  
   }
   
@@ -244,7 +244,7 @@ public class FftProcessor {
 	  ImportToDb Import = new ImportToDb();
 	  String[] fileList = new File(directoryName).list();
 	  for(String fileName : fileList){
-		  System.out.println("Importing :" + directoryName + "/" + fileName);
+		  System.out.println("Importing : " + fileName);
 		  importFile(directoryName + "/" + fileName, Import);
 	  }
 	  
@@ -252,7 +252,10 @@ public class FftProcessor {
   
 
   public static void main(String... args) throws UnsupportedAudioFileException, IOException {	  	  
-	  importFile("MusicsToImport/Achy Breaky Heart.mp3", new ImportToDb());
+//	  importFile("MusicsToImport/Achy Breaky Heart.mp3", new ImportToDb());
 //	  importMusicFromDirectory("C:/Users/Romain/PST-Abracadabra/MusicsToImport");
+	  
+	  ImportToDb.Recognize("Biggy.mp3");
+	  
   }
 }
